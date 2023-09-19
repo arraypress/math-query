@@ -551,7 +551,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 * @type array   $placeholders Array of placeholders for prepared statements.
 		 *                             }
 		 *
-		 * @throws Exception If an error occurs during the date conditions generation.
+		 * @throws Exception|\Exception If an error occurs during the date conditions generation.
 		 */
 		protected function generate_date_conditions( $date_column, $date_start, $date_end, &$placeholders ): array {
 			$date_conditions = array(
