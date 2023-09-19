@@ -23,9 +23,9 @@ The extension in question needs to have a `composer.json` file, specifically wit
 Once set up, run `composer install --no-dev`. This should create a new `vendors/` folder
 with `arraypress/math-query/` inside.
 
-## Using the Plugin Meta Library
+## Using the Math Query Library
 
-The Math_Query class allows you to perform mathematical queries on a WordPress database table. Here are examples of how to use it for various types of queries:
+The `Math_Query` class allows you to perform mathematical queries on a WordPress database table. Here are examples of how to use it for various types of queries:
 
 ```php 
 // Include the Composer-generated autoload file.
@@ -39,13 +39,20 @@ require_once dirname(__FILE__) . '/vendor/autoload.php';
 2. The `$external_links` array defines the external links you want to add to your plugin. Each link is an array with the
    following properties:
 
-| Key       | Description                                                                    | Required | Default Value       | Example                         |
-|-----------|--------------------------------------------------------------------------------|----------|---------------------|---------------------------------|
-| `action`  | Set to true if it's an action link or false for a row meta link.               | Optional | `false`             | `true`                          |
-| `label`   | The label or text for the link.                                                | Required | `''` (empty string) | `'Support'`                     |
-| `url`     | The URL the link should point to.                                              | Required | `''` (empty string) | `'https://example.com/support'` |
-| `utm`     | Set to true to add UTM parameters or false to omit them.                       | Optional | `true`              | `false`                         |
-| `new_tab` | Set to true to open the link in a new tab or false to open it in the same tab. | Optional | `true`              | `false`                         |
+| Variable Name     | Description                                                | Default Value          | Examples                             |
+|-------------------|------------------------------------------------------------|------------------------|--------------------------------------|
+| `table`           | Name of the database table to query (no prefix)           | Empty string            | `'edd_orders'`                       |
+| `column`          | Numeric column for calculations                           | Empty string            | `'total_sales'`                      |
+| `function`        | Mathematical function (e.g., SUM, AVG, MAX)              | `'SUM'`                 | `'AVG'`, `'MAX'`                     |
+| `date_column`     | Date-based column for date filtering                      | `'date_created'`        | `'order_date'`                        |
+| `date_start`      | Start date in MySQL format (optional)                     | Empty string (optional) | `'2023-01-01 00:00:00'`              |
+| `date_end`        | End date in MySQL format (optional)                       | Empty string (optional) | `'2023-12-31 23:59:59'`              |
+| `group_by`        | Column to group results by (optional)                     | Empty string (optional) | `'status'`                           |
+| `formatter`       | Callback function for result formatting (optional)        | `null`                   | `function($value) { return $value; }` |
+| `enable_caching`  | Flag to enable or disable caching                         | `true`                   | `false`                              |
+| `cache_group`     | Cache group name                                           | `'math_query'`           | `'custom_cache'`                     |
+| `debug`           | Flag for debugging purposes                               | `false`                  | `true`                               |
+| `context`         | Context for filter hook                                    | Empty string            | `'my_custom_context'`                |
 
 3. The `$utm_args` array defines the default UTM parameters for all links.
 
