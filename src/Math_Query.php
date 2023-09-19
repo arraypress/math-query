@@ -99,7 +99,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Check if the class `Math_Query` is defined, and if not, define it.
  */
-if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) {
+if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 	/**
 	 * Class Math_Query
 	 *
@@ -416,7 +416,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) {
 						if ( isset( $value['min'] ) || isset( $value['max'] ) ) {
 							$this->generate_numeric_condition( $column_name, $value, $placeholders, $where_conditions );
 						} elseif ( isset( $value['value'] ) && isset( $value['compare'] ) ) {
-							$this->generate_value_compare_condition( $column_name, $value['value'], $value['compare'], $placeholders, $where_conditions );
+							$this->generate_numeric_compare_condition( $column_name, $value['compare'], $value['value'], $placeholders, $where_conditions );
 						} else {
 							throw new \Exception( 'Invalid value provided for condition: ' . $value );
 						}
@@ -644,6 +644,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) {
 				? $this->query_vars['cache_group']
 				: 'math_query';
 		}
+
 	}
 
 endif;
