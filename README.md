@@ -9,19 +9,19 @@ The extension in question needs to have a `composer.json` file, specifically wit
 ```json 
 {
   "require": {
-    "arraypress/plugin-meta": "*"
+    "arraypress/math-query": "*"
   },
   "repositories": [
     {
       "type": "vcs",
-      "url": "https://github.com/arraypress/plugin-meta"
+      "url": "https://github.com/arraypress/math-query"
     }
   ]
 }
 ```
 
 Once set up, run `composer install --no-dev`. This should create a new `vendors/` folder
-with `arraypress/plugin-meta/` inside.
+with `arraypress/math-query/` inside.
 
 ## Using the Plugin Meta Library
 
