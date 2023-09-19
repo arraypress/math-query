@@ -1,0 +1,14 @@
+{
+  "name": "arraypress/math-query",
+  "description": "Easily perform mathematical queries on WordPress database tables.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "minimum-stability": "stable",
+  "require": {
+  },
+  "autoload": {
+    "psr-4": {
+      "ArrayPress\\Utils\\": "src/"
+    }
+  }
+}
