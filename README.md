@@ -1,6 +1,6 @@
 # WordPress Math Query Database Library
 
-This library handles the registration of custom plugin action links and row meta links, allowing developers to easily add external links to the plugin's action links or row meta section in the WordPress admin Plugins page.
+Perform mathematical queries on a WordPress database table using the `Math_Query` class. This library simplifies complex database queries for summing, averaging, and more.
 
 ## Installation and set up
 
@@ -25,44 +25,13 @@ with `arraypress/math-query/` inside.
 
 ## Using the Plugin Meta Library
 
-The `Plugin_Meta` class simplifies the process of adding custom action links and row meta links to your WordPress
-plugin. You can use it to enhance your plugin's functionality by adding external links to the admin Plugins page. Here's
-an example of how to use it:
+The Math_Query class allows you to perform mathematical queries on a WordPress database table. Here are examples of how to use it for various types of queries:
 
 ```php 
 // Include the Composer-generated autoload file.
 require_once dirname(__FILE__) . '/vendor/autoload.php';
 
-// Define an array of external links to add to your plugin.
-$external_links = array(
-	'support'    => array(
-		'action' => false,
-		'label'  => __( 'Support', 'your-text-domain' ),
-		'url'    => 'https://example.com/support',
-	),
-	'extensions' => array(
-		'action' => false,
-		'label'  => __( 'Get More Extensions', 'your-text-domain' ),
-		'url'    => 'https://example.com/extensions',
-	),
-	'settings'   => array(
-		'action' => true,\
-		'label'  => __( 'Settings', 'your-text-domain' ),
-		'url'    => admin_url( 'options-general.php?page=plugin-settings' ),
-		'utm'    => false,
-	),
-	// Add more link entries as needed.
-);
 
-// Define UTM parameters if desired.
-$utm_args = array(
-	'utm_source'   => 'your-source',
-	'utm_medium'   => 'your-medium',
-	'utm_campaign' => 'your-campaign',
-);
-
-// Create an instance of the Plugin_Meta class.
-new \ArrayPress\Utils\Plugin_Meta(__FILE__, $external_links, $utm_args );
 ```
 
 1. The `vendor/autoload.php` file is included to autoload classes from Composer.
