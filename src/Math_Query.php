@@ -108,6 +108,13 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 	class Math_Query {
 
 		/**
+		 * Array to store the schema information for database tables.
+		 *
+		 * @var array
+		 */
+		protected array $table_schema = array();
+
+		/**
 		 * Default query variables.
 		 *
 		 * @var array
@@ -119,7 +126,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @var array
 		 */
-		protected $query_vars = array();
+		protected array $query_vars = array();
 
 		/**
 		 * Math_Query constructor.
@@ -133,7 +140,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				'table'          => '',
 				'column'         => '',
 				'function'       => 'SUM',
-				'date_column'    => 'date_created',
+				'date_column'    => '',
 				'date_start'     => '',
 				'date_end'       => '',
 				'group_by'       => '',
@@ -146,8 +153,6 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			$this->query_vars = wp_parse_args( $query, $this->default_query_vars );
 
-			$this->query_vars = apply_filters( 'arraypress_math_query_vars', $this->query_vars, $query );
-
 			global $wpdb;
 
 			if ( $this->query_vars['debug'] ) {
@@ -156,10 +161,16 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			if ( ! $this->validate_table( $this->query_vars['table'] ) ) {
 				throw new \Exception( 'Invalid table name.' );
+			} else {
+				$this->table_schema = $this->get_table_schema( $this->query_vars['table'] );
 			}
 
-			if ( ! $this->validate_column( $this->query_vars['table'], $this->query_vars['column'], $this->query_vars['function'] ) ) {
+			if ( ! $this->validate_column( $this->query_vars['column'], $this->query_vars['function'] ) ) {
 				throw new \Exception( 'Invalid column name.' );
+			}
+
+			if ( ! empty( $this->query_vars['date_column'] ) && ! $this->is_valid_date_column( $this->query_vars['date_column'] ) ) {
+				throw new \Exception( 'Invalid date column name.' );
 			}
 
 			if ( ! empty( $this->query_vars['date_start'] ) && ! $this->is_valid_date_format( $this->query_vars['date_start'] ) ) {
@@ -169,6 +180,16 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 			if ( ! empty( $this->query_vars['date_end'] ) && ! $this->is_valid_date_format( $this->query_vars['date_end'] ) ) {
 				throw new \Exception( 'Invalid date format for date_end.' );
 			}
+
+			if ( ! empty( $this->query_vars['group_by'] ) && ! $this->is_valid_group_by_column( $this->query_vars['group_by'] ) ) {
+				throw new \Exception( 'Invalid group_by parameter. It must be a valid column name if not empty and a string.' );
+			}
+
+			if ( ! empty( $this->query_vars['context'] ) && ! is_string( $this->query_vars['context'] ) ) {
+				throw new \Exception( 'Invalid group_by parameter. It must be a valid column name if not empty and a string.' );
+			}
+
+			$this->query_vars = apply_filters( 'arraypress_math_query_vars', $this->query_vars, $query );
 		}
 
 		/**
@@ -178,7 +199,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return bool Whether the table exists.
 		 */
-		protected function validate_table( $table ): bool {
+		protected function validate_table( string $table ): bool {
 			global $wpdb;
 
 			return $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $this->get_table_name( $table ) ) ) === $this->get_table_name( $table );
@@ -187,22 +208,15 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		/**
 		 * Get the column type of the given column in the specified table.
 		 *
-		 * @param string $table  Table name.
 		 * @param string $column Column name.
 		 *
 		 * @return string|false The column type if it exists, false otherwise.
 		 */
-		protected function get_column_type( $table, $column ) {
-			global $wpdb;
-			$columns = $wpdb->get_col( "DESCRIBE " . $this->get_table_name( $table ), 0 );
-			if ( in_array( $column, $columns, true ) ) {
-				return $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = %s AND COLUMN_NAME = %s",
-						$this->get_table_name( $table ),
-						$column
-					)
-				);
+		protected function get_column_type( string $column ) {
+			$columns = $this->table_schema ?? array();
+
+			if ( array_key_exists( $column, $columns ) ) {
+				return $columns[ $column ];
 			}
 
 			return false;
@@ -211,17 +225,18 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		/**
 		 * Validate the existence and numeric nature of the given column in the specified table.
 		 *
-		 * @param string $table    Table name.
 		 * @param string $column   Column name.
 		 * @param string $function Aggregate function.
 		 *
 		 * @return bool Whether the column exists and is numeric.
 		 * @throws Exception If an error occurs during the column validation.
 		 */
-		protected function validate_column( $table, $column, $function = '' ): bool {
-			$column_type = $this->get_column_type( $table, $column );
+		protected function validate_column( string $column, string $function = '' ): bool {
+			$table_schema = $this->table_schema ?? array();
 
-			if ( $column_type !== false ) {
+			if ( array_key_exists( $column, $table_schema ) ) {
+				$column_type = $table_schema[ $column ];
+
 				if ( ! empty( $function ) && $function !== 'COUNT' && ! $this->is_numeric_column( $column_type ) ) {
 					throw new \Exception( 'Invalid column type. Only numeric columns can be used.' );
 				}
@@ -239,7 +254,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return bool Whether the column type is numeric.
 		 */
-		protected function is_numeric_column( $column_type ): bool {
+		protected function is_numeric_column( string $column_type ): bool {
 			$numeric_types = array( 'tinyint', 'smallint', 'mediumint', 'int', 'bigint', 'decimal', 'float', 'double' );
 			$column_type   = strtolower( $column_type );
 
@@ -253,16 +268,138 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		}
 
 		/**
+		 * Checks if the column type indicates a string nature.
+		 *
+		 * @param string $column_type Column type.
+		 *
+		 * @return bool Whether the column type is a string.
+		 */
+		protected function is_string_column( string $column_type ): bool {
+			// Define regular expressions to match string data types
+			$string_patterns = array(
+				'/^char\(/i',       // Matches CHAR types (e.g., CHAR(10))
+				'/^varchar\(/i',    // Matches VARCHAR types (e.g., VARCHAR(255))
+				'/^text/i',         // Matches TEXT types
+				'/^tinytext/i',     // Matches TINYTEXT types
+				'/^mediumtext/i',   // Matches MEDIUMTEXT types
+				'/^longtext/i',     // Matches LONGTEXT types
+				'/^binary\(/i',     // Matches BINARY types (e.g., BINARY(10))
+				'/^varbinary\(/i',  // Matches VARBINARY types (e.g., VARBINARY(255))
+				'/^blob/i',         // Matches BLOB types
+				'/^tinyblob/i',     // Matches TINYBLOB types
+				'/^mediumblob/i',   // Matches MEDIUMBLOB types
+				'/^longblob/i',     // Matches LONGBLOB types
+			);
+
+			$column_type = strtolower( $column_type );
+
+			foreach ( $string_patterns as $pattern ) {
+				if ( preg_match( $pattern, $column_type ) ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		 * Checks if the column type indicates a date or time-related nature.
+		 *
+		 * @param string $column_type Column type.
+		 *
+		 * @return bool Whether the column type is a date or time-related type.
+		 */
+		protected function is_date_column( string $column_type ): bool {
+			// Define regular expressions to match date and time-related data types
+			$date_patterns = array(
+				'/^date/i',             // Matches DATE types
+				'/^time/i',             // Matches TIME types
+				'/^year/i',             // Matches YEAR types
+				'/^datetime/i',         // Matches DATETIME types
+				'/^timestamp/i',        // Matches TIMESTAMP types
+				'/^timestamp\(\d+\)/i', // Matches TIMESTAMP with fractional seconds (e.g., TIMESTAMP(6))
+				'/^year\(\d+\)/i',      // Matches YEAR with display width (e.g., YEAR(4))
+			);
+
+			$column_type = strtolower( $column_type );
+
+			foreach ( $date_patterns as $pattern ) {
+				if ( preg_match( $pattern, $column_type ) ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		 * Check if a column exists in the table schema.
+		 *
+		 * @param string $column Column name.
+		 *
+		 * @return bool Whether the column exists in the table schema.
+		 */
+		protected function column_exists( string $column ): bool {
+			$table_schema = $this->table_schema ?? array();
+
+			return array_key_exists( $column, $table_schema );
+		}
+
+		/**
 		 * Checks if a given date string is in a valid format.
 		 *
 		 * @param string $date Date string.
 		 *
 		 * @return bool Whether the date format is valid.
 		 */
-		protected function is_valid_date_format( $date ): bool {
+		protected function is_valid_date_format( string $date ): bool {
 			$parsed_date = date_parse( $date );
 
 			return $parsed_date['error_count'] === 0 && $parsed_date['warning_count'] === 0;
+		}
+
+		/**
+		 * Validate the existence and string nature of the given group_by column in the specified table.
+		 *
+		 * @param string $group_by Group by column name.
+		 *
+		 * @return bool Whether the group_by column exists and is a string.
+		 * @throws Exception If an error occurs during the group_by column validation.
+		 */
+		protected function is_valid_group_by_column( string $group_by ): bool {
+			$column_type = $this->get_column_type( $group_by );
+
+			if ( ! empty( $column_type ) ) {
+				if ( ! $this->is_string_column( $column_type ) ) {
+					throw new \Exception( 'Invalid group_by column. It must be a string.' );
+				}
+
+				return true;
+			}
+
+			return false;
+		}
+
+		/**
+		 * Validate the existence and date nature of the given group_by column in the specified table.
+		 *
+		 * @param string $column Group by column name.
+		 *
+		 * @return bool Whether the group_by column exists and is a date type.
+		 * @throws Exception If an error occurs during the group_by column validation or if the column is not a date type.
+		 */
+		protected function is_valid_date_column( string $column ): bool {
+			$column_type = $this->get_column_type( $column );
+
+			if ( ! empty( $column_type ) ) {
+				if ( ! $this->is_date_column( $column_type ) ) {
+					throw new \Exception( 'Invalid date column. It must be a date type.' );
+				}
+
+				return true;
+			}
+
+			return false;
 		}
 
 		/**
@@ -270,8 +407,9 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return mixed Result of the database query.
 		 * @throws Exception If an error occurs during the database query.
+		 * @throws \Exception
 		 */
-		public function get_result() {
+		public function get_result(): mixed {
 			$table       = $this->query_vars['table'];
 			$column      = $this->query_vars['column'];
 			$function    = $this->query_vars['function'];
@@ -298,30 +436,49 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				throw new \Exception( 'Invalid function.' );
 			}
 
-			$query .= "$function($column) AS result";
+			// Construct the SQL query
+			if ( $function === 'COUNT' ) {
+				$query .= "COUNT(*) AS result";
+			} else {
+				$query .= "$function($column) AS result";
+			}
 
+			// Add GROUP BY clause if provided
 			if ( ! empty( $group_by ) ) {
-				$query .= ', ' . sanitize_text_field( $group_by );
+				$query .= ', ' . $group_by;
 			}
 
 			$query .= " FROM " . $this->get_table_name( $table );
 
 			$placeholders = array();
 
-			$where_conditions = $this->generate_where_conditions( $placeholders );
-
-			if ( ! empty( $where_conditions ) ) {
-				$query .= " WHERE " . implode( ' AND ', $where_conditions );
-			}
-
+			// Generate all conditions (including date conditions)
+			$all_conditions  = $this->generate_where_conditions( $placeholders );
 			$date_conditions = $this->generate_date_conditions( $date_column, $date_start, $date_end, $placeholders );
-			$query           .= $date_conditions['query'];
-			$placeholders    = array_merge( $placeholders, $date_conditions['placeholders'] );
+
+			// Combine all conditions into a single WHERE clause
+			if ( ! empty( $all_conditions ) || ! empty( $date_conditions['query'] ) ) {
+				$query .= " WHERE ";
+
+				if ( ! empty( $all_conditions ) ) {
+					$query .= implode( ' AND ', $all_conditions );
+				}
+
+				if ( ! empty( $all_conditions ) && ! empty( $date_conditions['query'] ) ) {
+					$query .= ' AND ';
+				}
+
+				$query .= $date_conditions['query'];
+			}
 
 			// Add GROUP BY clause if provided
 			if ( ! empty( $group_by ) ) {
 				$query .= ' GROUP BY ' . $group_by;
 			}
+
+			$query = $wpdb->prepare( $query, $placeholders );
+
+			var_dump( $query );
 
 			// Execute the database query based on GROUP BY
 			if ( ! empty( $group_by ) ) {
@@ -351,7 +508,6 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				}
 			} else {
 				// Execute the non-grouped query using get_var()
-				$query  = $wpdb->prepare( $query, $placeholders );
 				$result = $wpdb->get_var( $query );
 
 				if ( $wpdb->last_error ) {
@@ -388,7 +544,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 * @return array Array of WHERE conditions.
 		 * @throws Exception If an error occurs during the WHERE conditions generation.
 		 */
-		protected function generate_where_conditions( &$placeholders ): array {
+		protected function generate_where_conditions( array &$placeholders ): array {
 			$where_conditions = array();
 
 			foreach ( $this->query_vars as $key => $value ) {
@@ -408,7 +564,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 						continue;
 					}
 
-					if ( ! $this->validate_column( $this->query_vars['table'], $column_name ) ) {
+					if ( ! $this->validate_column( $column_name ) ) {
 						throw new \Exception( 'Invalid column name: ' . $column_name );
 					}
 
@@ -440,17 +596,21 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
-		protected function generate_in_condition( $column_name, $values, &$placeholders, &$where_conditions, $condition_type ) {
+		protected function generate_in_condition( string $column_name, array $values, array &$placeholders, array &$where_conditions, string $condition_type ): void {
 			if ( ! is_array( $values ) ) {
 				throw new \Exception( 'Values must be an array for ' . $condition_type . ' condition.' );
 			}
 
-			$formatted_values = array_map( 'sanitize_text_field', $values );
-			$placeholders_str = implode( ', ', array_fill( 0, count( $formatted_values ), '%s' ) );
+			// Determine the placeholder type for each value
+			$placeholder_types = array_map( array( $this, 'get_placeholder_type' ), $values );
 
-			$placeholders       = array_merge( $placeholders, $formatted_values );
+			// Generate placeholders dynamically based on the types
+			$placeholders_str = implode( ', ', $placeholder_types );
+
+			$placeholders       = array_merge( $placeholders, $values );
 			$where_conditions[] = "$column_name $condition_type ($placeholders_str)";
 		}
+
 
 		/**
 		 * Generate numeric condition (min/max) for the query.
@@ -462,7 +622,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
-		protected function generate_numeric_condition( $column_name, $value, &$placeholders, &$where_conditions ) {
+		protected function generate_numeric_condition( string $column_name, array $value, array &$placeholders, array &$where_conditions ): void {
 			$min_value = $value['min'] ?? null;
 			$max_value = $value['max'] ?? null;
 
@@ -486,7 +646,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
-		protected function generate_numeric_range_condition( $column_name, $min_value, $max_value, &$placeholders, &$where_conditions ) {
+		protected function generate_numeric_range_condition( string $column_name, mixed $min_value, mixed $max_value, array &$placeholders, array &$where_conditions ): void {
 			$placeholder_min     = $this->get_placeholder_type( $min_value );
 			$placeholder_max     = $this->get_placeholder_type( $max_value );
 			$formatted_min_value = is_numeric( $min_value ) ? $min_value : sanitize_text_field( $min_value );
@@ -507,7 +667,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
-		protected function generate_numeric_compare_condition( $column_name, $operator, $value, &$placeholders, &$where_conditions ) {
+		protected function generate_numeric_compare_condition( string $column_name, string $operator, mixed $value, array &$placeholders, array &$where_conditions ): void {
 			$allowed_operators = array( '=', '>', '>=', '<', '<=', '!=' );
 
 			if ( ! in_array( $operator, $allowed_operators, true ) ) {
@@ -530,7 +690,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
-		protected function generate_basic_condition( $column_name, $value, &$placeholders, &$where_conditions ) {
+		protected function generate_basic_condition( string $column_name, mixed $value, array &$placeholders, array &$where_conditions ): void {
 			$placeholder_type   = $this->get_placeholder_type( $value );
 			$placeholders[]     = $value;
 			$where_conditions[] = "$column_name = $placeholder_type";
@@ -553,31 +713,35 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @throws Exception|\Exception If an error occurs during the date conditions generation.
 		 */
-		protected function generate_date_conditions( $date_column, $date_start, $date_end, &$placeholders ): array {
+		protected function generate_date_conditions( string $date_column, string $date_start, string $date_end, array &$placeholders ): array {
 			$date_conditions = array(
 				'query'        => '',
 				'placeholders' => array(),
 			);
 
 			if ( ! empty( $date_column ) && ( ! empty( $date_start ) || ! empty( $date_end ) ) ) {
-				$date_conditions['query'] = ' AND ';
+				$conditions = array();
+
 				if ( ! empty( $date_start ) ) {
 					if ( ! $this->is_valid_date_format( $date_start ) ) {
 						throw new \Exception( 'Invalid date format for date_start.' );
 					}
-					$date_conditions['query']          .= "$date_column >= %s";
+					$conditions[]                      = "$date_column >= %s";
 					$date_conditions['placeholders'][] = $date_start;
 				}
+
 				if ( ! empty( $date_end ) ) {
 					if ( ! $this->is_valid_date_format( $date_end ) ) {
 						throw new \Exception( 'Invalid date format for date_end.' );
 					}
-					if ( ! empty( $date_start ) ) {
-						$date_conditions['query'] .= ' AND ';
-					}
-					$date_conditions['query']          .= "$date_column <= %s";
+					$conditions[]                      = "$date_column <= %s";
 					$date_conditions['placeholders'][] = $date_end;
 				}
+
+				if ( ! empty( $conditions ) ) {
+					$date_conditions['query'] = ' (' . implode( ' AND ', $conditions ) . ')';
+				}
+
 				$placeholders = array_merge( $placeholders, $date_conditions['placeholders'] );
 			}
 
@@ -591,7 +755,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return string Placeholder type.
 		 */
-		protected function get_placeholder_type( $value ): string {
+		protected function get_placeholder_type( mixed $value ): string {
 			if ( is_int( $value ) ) {
 				return '%d';
 			} elseif ( is_float( $value ) ) {
@@ -608,7 +772,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return string Prefixed table name.
 		 */
-		protected function get_table_name( $table ): string {
+		protected function get_table_name( string $table ): string {
 			global $wpdb;
 
 			return $wpdb->prefix . $table;
@@ -643,6 +807,37 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 			return ! empty( $this->query_vars['cache_group'] )
 				? $this->query_vars['cache_group']
 				: 'math_query';
+		}
+
+		/**
+		 * Get the schema information for a database table and cache it.
+		 *
+		 * @param string $table Table name.
+		 *
+		 * @return array|false Associative array containing column names as keys and column types as values, or false on failure.
+		 */
+		protected function get_table_schema( string $table ) {
+			global $wpdb;
+
+			// Fetch the schema information from the database
+			$schema = $wpdb->get_results( "DESCRIBE " . $this->get_table_name( $table ) );
+
+			if ( is_array( $schema ) ) {
+				$schema_data = array();
+
+				// Iterate through the schema results and extract column names and types
+				foreach ( $schema as $column_info ) {
+					if ( isset( $column_info->Field ) && isset( $column_info->Type ) ) {
+						$schema_data[ $column_info->Field ] = $column_info->Type;
+					} else {
+						return false;
+					}
+				}
+
+				return $schema_data;
+			}
+
+			return false;
 		}
 
 	}
