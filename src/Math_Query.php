@@ -478,8 +478,6 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			$query = $wpdb->prepare( $query, $placeholders );
 
-			var_dump( $query );
-
 			// Execute the database query based on GROUP BY
 			if ( ! empty( $group_by ) ) {
 				$results = $wpdb->get_results( $query, OBJECT );
@@ -597,9 +595,6 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 * @throws Exception If an error occurs during the condition generation.
 		 */
 		protected function generate_in_condition( string $column_name, array $values, array &$placeholders, array &$where_conditions, string $condition_type ): void {
-			if ( ! is_array( $values ) ) {
-				throw new \Exception( 'Values must be an array for ' . $condition_type . ' condition.' );
-			}
 
 			// Determine the placeholder type for each value
 			$placeholder_types = array_map( array( $this, 'get_placeholder_type' ), $values );
