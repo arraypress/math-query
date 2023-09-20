@@ -1,6 +1,15 @@
 # WordPress Math Query Database Library
 
-Perform mathematical queries on a WordPress database table using the `Math_Query` class. This library simplifies complex database queries for summing, averaging, and more.
+Perform mathematical queries on a WordPress database table using the `Math_Query` class. This library simplifies complex
+database queries for summing, averaging, and more.
+
+**Key Features:**
+
+* **Schema Validation:** The library automatically validates table schemas and ensures column data types match, providing peace of mind when crafting queries.
+* **Built-in Caching:** Enjoy the benefits of built-in caching to boost performance, and if needed, effortlessly disable it to suit your specific needs.
+* **Context-Aware WordPress Filters:** Harness the potential of context-aware WordPress filters that enhance your querying capabilities and adapt to various scenarios seamlessly.
+* **Universal Compatibility:** Whether you're working with default or custom database tables, the Math_Query class is your reliable companion for any data source.
+* **Robust Error Handling:** Experience error and exception handling that guides you when incorrect data is passed in, making debugging and troubleshooting a breeze.
 
 ## Installation and set up
 
@@ -25,37 +34,166 @@ with `arraypress/math-query/` inside.
 
 ## Using the Math Query Library
 
-The `Math_Query` class allows you to perform mathematical queries on a WordPress database table. Here are examples of how to use it for various types of queries:
+The `Math_Query` class allows you to perform mathematical queries on a WordPress database table. Here are examples of
+how to use it for various types of queries:
+
+### Including the Vendor Library
+
+Before using the Math_Query class, you need to include the Composer-generated autoload file. This file ensures that the required dependencies and classes are loaded into your PHP script. You can include it using the following code:
 
 ```php 
 // Include the Composer-generated autoload file.
 require_once dirname(__FILE__) . '/vendor/autoload.php';
 ```
 
-1. The `vendor/autoload.php` file is included to autoload classes from Composer.
+### Counting Rows
+```php
+$query_args = array(
+    'table'    => 'edd_orders',
+    'function' => 'COUNT',
+);
 
-2. The `$external_links` array defines the external links you want to add to your plugin. Each link is an array with the
-   following properties:
+$math_query       = new Math_Query( $query_args );
+$count_all_orders = $math_query->get_result();
 
-| Variable Name     | Description                                                | Default Value          | Examples                             |
-|-------------------|------------------------------------------------------------|------------------------|--------------------------------------|
-| `table`           | Name of the database table to query (no prefix)           | Empty string            | `'edd_orders'`                       |
-| `column`          | Numeric column for calculations                           | Empty string            | `'total_sales'`                      |
-| `function`        | Mathematical function (e.g., SUM, AVG, MAX)              | `'SUM'`                 | `'AVG'`, `'MAX'`                     |
-| `date_column`     | Date-based column for date filtering                      | `'date_created'`        | `'order_date'`                        |
-| `date_start`      | Start date in MySQL format (optional)                     | Empty string (optional) | `'2023-01-01 00:00:00'`              |
-| `date_end`        | End date in MySQL format (optional)                       | Empty string (optional) | `'2023-12-31 23:59:59'`              |
-| `group_by`        | Column to group results by (optional)                     | Empty string (optional) | `'status'`                           |
-| `formatter`       | Callback function for result formatting (optional)        | `null`                   | `function($value) { return $value; }` |
-| `enable_caching`  | Flag to enable or disable caching                         | `true`                   | `false`                              |
-| `cache_group`     | Cache group name                                           | `'math_query'`           | `'custom_cache'`                     |
-| `debug`           | Flag for debugging purposes                               | `false`                  | `true`                               |
-| `context`         | Context for filter hook                                    | Empty string            | `'my_custom_context'`                |
+echo "Total number of orders: $count_all_orders\n"; 
 
-3. The `$utm_args` array defines the default UTM parameters for all links.
+```
+In this example, we use the `Math_Query` class to count all records in the `edd_orders` table. The function parameter is set to 'COUNT,' indicating a count operation. Since no specific column is specified, it counts all records in the table. The result is stored in `$count_all_orders`, and we print the total number of orders.
 
-An instance of the `Plugin_Meta` class is created with the provided settings, adding the external links to your
-WordPress plugin's admin page.
+### Summation of Order Totals
+```php
+$query_args = array(
+    'table'    => 'edd_orders',
+    'column'   => 'total',
+    'function' => 'SUM', // Default function (can be omitted)
+);
+
+$math_query          = new Math_Query( $query_args );
+$sum_of_order_totals = $math_query->get_result();
+
+echo "Sum of order totals: $sum_of_order_totals\n";
+```
+In this example, we calculate the sum of order totals from the `total` column in the `edd_orders` table. We specify the function parameter as `SUM` to perform a sum operation. The column parameter specifies the column from which the sum is calculated, which is 'total' in this case. The result is stored in `$sum_of_order_totals`, and we print the sum.
+
+The `Math_Query` class supports various mathematical functions that you can use to perform operations on your data. The accepted functions include:
+
+* SUM (default)
+* MIN
+* MAX
+* AVG
+* COUNT
+
+### Summation of 'total' for 'pending' and 'refunded' Status Orders
+```php
+$query_args = array(
+	'table'      => 'edd_orders',
+	'column'     => 'total',
+	'function'   => 'SUM', // Default function (can be omitted)
+	'status__in' => array( 'pending', 'refunded' )
+);
+
+$math_query          = new Math_Query( $query_args );
+$sum_selected_orders = $math_query->get_result();
+
+echo "Sum of 'total' for 'pending' and 'refunded' status orders: $sum_selected_orders\n";
+```
+n this example, we sum the "total" column for orders with 'pending' or 'refunded' statuses from the `edd_orders` table. The function parameter is set to 'SUM' to perform a sum operation. We use the status__in parameter to filter orders with either 'pending' or 'refunded' statuses. The result, which is the sum of "total" values for selected orders, is stored in $sum_selected_orders, and we print the sum.
+
+### Summation of 'total' for Orders with Statuses Other Than 'Refunded'
+```php
+$query_args = array(
+	'table'          => 'edd_orders',
+	'column'         => 'total',
+	'function'       => 'SUM', // Default function (can be omitted)
+	'status__not_in' => array( 'refunded' )
+);
+
+$math_query              = new Math_Query( $query_args );
+$sum_non_refunded_orders = $math_query->get_result();
+
+echo "Sum of 'total' for orders with statuses other than 'refunded': $sum_non_refunded_orders\n";
+```
+In this example, we sum the "total" column for orders with statuses other than 'refunded' from the "edd_orders" table. The function parameter is set to 'SUM' to perform a sum operation. We use the status__not_in parameter to filter orders that are not 'refunded.' The result, which is the sum of "total" values for non-'refunded' orders, is stored in $sum_non_refunded_orders, and we print the sum.
+
+### Counting Orders Within a Specified Date Range
+```php
+$query_args = array(
+    'table'       => 'edd_orders',
+    'function'    => 'COUNT',
+    'date_column' => 'date_created',
+    'date_start'  => '2023-01-01',
+    'date_end'    => '2023-12-31',
+);
+
+$math_query       = new Math_Query($query_args);
+$count_all_orders = $math_query->get_result();
+
+echo "Total number of orders: $count_all_orders\n";
+```
+In this example, we use the Math_Query class to count all orders within a specified date range in the "edd_orders" table. The function parameter is set to 'COUNT' for a count operation. We specify the date column using the date_column parameter and set the date range using date_start and date_end parameters. The result, which is the total number of orders within the specified date range, is stored in $count_all_orders, and we print the count.
+
+### Counting Orders Within a Numeric Range
+```php
+$query_args = array(
+    'table'    => 'edd_orders',
+    'function' => 'COUNT',
+    'total'    => array(
+        'min' => 10,
+        'max' => 30
+    )
+);
+
+$math_query            = new Math_Query( $query_args );
+$count_in_range_orders = $math_query->get_result();
+
+echo "Total number of orders within the range: $count_in_range_orders\n";
+```
+In this example, we use the Math_Query class to count orders within a specified numeric range in the "edd_orders" table. The function parameter is set to 'COUNT' for a count operation. We specify the numeric range using the total parameter with 'min' and 'max' values. The result, which is the total number of orders within the specified range, is stored in $count_in_range_orders, and we print the count.
+
+### Summation of Order Totals with Comparison
+```php
+// Example 2: Calculate the sum of order totals where the 'total' value is greater than 10
+$query_args = array(
+    'table'    => 'edd_orders',
+    'column'   => 'total',
+    'function' => 'SUM', // Default function (can be omitted)
+    'total'    => array(
+        'value'   => 10,
+        'compare' => '>' // Accepted operators '=', '>', '>=', '<', '<=', '!='
+    )
+);
+
+$math_query          = new Math_Query( $query_args );
+$sum_greater_than_10 = $math_query->get_result();
+
+echo "Sum of order totals where 'total' is greater than 10: $sum_greater_than_10\n";
+```
+In this example, we calculate the sum of order totals from the "total" column in the "edd_orders" table. We specify the function parameter as 'SUM' to perform a sum operation. Additionally, we apply a condition using the total parameter, specifying that we want to sum values greater than 10 with the '>' comparison operator. The result is stored in $sum_greater_than_10, and we print the sum.
+
+### Counting Orders Grouped by 'status'
+```php
+// Example 1: Count all orders grouped by 'status'
+$query_args = array(
+    'table'    => 'edd_orders',
+    'function' => 'COUNT',
+    'group_by' => 'status',
+);
+
+$math_query       = new Math_Query( $query_args );
+$count_all_orders = $math_query->get_result();
+
+// Display the result using print_r
+echo "Count of all orders grouped by 'status':\n";
+print_r( $count_all_orders );
+
+// Or display the result using echo
+echo "\nCount of all orders grouped by 'status':\n";
+foreach ( $count_all_orders as $status => $count ) {
+    echo "Status: $status, Count: $count\n";
+}
+```
+In this example, we use the `Math_Query` class to count all orders in the "edd_orders" table and group them by 'status.' The function parameter is set to 'COUNT' for a count operation. The group_by parameter is used to group the results by the 'status' column. We retrieve the results into $count_all_orders and then display them using both print_r and echo. This allows you to see the count of orders for each 'status' category.
 
 ## Contributions
 
