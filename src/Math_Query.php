@@ -161,6 +161,23 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				$wpdb->show_errors();
 			}
 
+			$this->query_vars = apply_filters( 'arraypress_math_query_vars', $this->query_vars, $query );
+		}
+
+		/**
+		 * Validate the parameters of the Math_Query object.
+		 *
+		 * This method performs various validation checks on the query parameters
+		 * to ensure they meet the expected criteria. If any validation check fails,
+		 * it throws an exception with an error message.
+		 *
+		 * @return bool True if all validation checks pass, false otherwise.
+		 *
+		 * @throws Exception If any validation check fails, an exception is thrown
+		 *                   with a descriptive error message.
+		 */
+		protected function validate_query(): bool {
+
 			if ( ! $this->validate_table( $this->query_vars['table'] ) ) {
 				throw new Exception( 'Invalid table name.' );
 			} else {
@@ -191,7 +208,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				throw new Exception( 'Invalid context. It must be a string.' );
 			}
 
-			$this->query_vars = apply_filters( 'arraypress_math_query_vars', $this->query_vars, $query );
+			return true; // All validations passed
 		}
 
 		/**
@@ -235,6 +252,10 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 */
 		protected function validate_column( string $column, string $function = '' ): bool {
 			$table_schema = $this->table_schema ?? array();
+
+			if ( ! empty( $function ) && $function === 'COUNT' ) {
+				return true;
+			}
 
 			if ( array_key_exists( $column, $table_schema ) ) {
 				$column_type = $table_schema[ $column ];
@@ -412,6 +433,12 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 * @throws Exception
 		 */
 		public function get_result(): mixed {
+
+			// Check if validation passes, and if not, throw an exception
+			if ( ! $this->validate_query() ) {
+				throw new Exception( 'Query validation failed.' );
+			}
+
 			$table       = $this->query_vars['table'];
 			$column      = $this->query_vars['column'];
 			$function    = $this->query_vars['function'];
