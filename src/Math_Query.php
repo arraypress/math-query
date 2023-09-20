@@ -96,6 +96,8 @@ namespace ArrayPress\Utils;
 // Exit if accessed directly
 defined( 'ABSPATH' ) || exit;
 
+use Exception;
+
 /**
  * Check if the class `Math_Query` is defined, and if not, define it.
  */
@@ -160,33 +162,33 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 			}
 
 			if ( ! $this->validate_table( $this->query_vars['table'] ) ) {
-				throw new \Exception( 'Invalid table name.' );
+				throw new Exception( 'Invalid table name.' );
 			} else {
 				$this->table_schema = $this->get_table_schema( $this->query_vars['table'] );
 			}
 
 			if ( ! $this->validate_column( $this->query_vars['column'], $this->query_vars['function'] ) ) {
-				throw new \Exception( 'Invalid column name.' );
+				throw new Exception( 'Invalid column name.' );
 			}
 
 			if ( ! empty( $this->query_vars['date_column'] ) && ! $this->is_valid_date_column( $this->query_vars['date_column'] ) ) {
-				throw new \Exception( 'Invalid date column name.' );
+				throw new Exception( 'Invalid date column name.' );
 			}
 
 			if ( ! empty( $this->query_vars['date_start'] ) && ! $this->is_valid_date_format( $this->query_vars['date_start'] ) ) {
-				throw new \Exception( 'Invalid date format for date_start.' );
+				throw new Exception( 'Invalid date format for date_start.' );
 			}
 
 			if ( ! empty( $this->query_vars['date_end'] ) && ! $this->is_valid_date_format( $this->query_vars['date_end'] ) ) {
-				throw new \Exception( 'Invalid date format for date_end.' );
+				throw new Exception( 'Invalid date format for date_end.' );
 			}
 
 			if ( ! empty( $this->query_vars['group_by'] ) && ! $this->is_valid_group_by_column( $this->query_vars['group_by'] ) ) {
-				throw new \Exception( 'Invalid group_by parameter. It must be a valid column name if not empty and a string.' );
+				throw new Exception( 'Invalid group_by parameter. It must be a valid column name if not empty and a string.' );
 			}
 
 			if ( ! empty( $this->query_vars['context'] ) && ! is_string( $this->query_vars['context'] ) ) {
-				throw new \Exception( 'Invalid group_by parameter. It must be a valid column name if not empty and a string.' );
+				throw new Exception( 'Invalid context. It must be a string.' );
 			}
 
 			$this->query_vars = apply_filters( 'arraypress_math_query_vars', $this->query_vars, $query );
@@ -238,7 +240,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				$column_type = $table_schema[ $column ];
 
 				if ( ! empty( $function ) && $function !== 'COUNT' && ! $this->is_numeric_column( $column_type ) ) {
-					throw new \Exception( 'Invalid column type. Only numeric columns can be used.' );
+					throw new Exception( 'Invalid column type. Only numeric columns can be used.' );
 				}
 
 				return true;
@@ -371,7 +373,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			if ( ! empty( $column_type ) ) {
 				if ( ! $this->is_string_column( $column_type ) ) {
-					throw new \Exception( 'Invalid group_by column. It must be a string.' );
+					throw new Exception( 'Invalid group_by column. It must be a string.' );
 				}
 
 				return true;
@@ -393,7 +395,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			if ( ! empty( $column_type ) ) {
 				if ( ! $this->is_date_column( $column_type ) ) {
-					throw new \Exception( 'Invalid date column. It must be a date type.' );
+					throw new Exception( 'Invalid date column. It must be a date type.' );
 				}
 
 				return true;
@@ -407,7 +409,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 *
 		 * @return mixed Result of the database query.
 		 * @throws Exception If an error occurs during the database query.
-		 * @throws \Exception
+		 * @throws Exception
 		 */
 		public function get_result(): mixed {
 			$table       = $this->query_vars['table'];
@@ -433,7 +435,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 			$allowed_functions = array( 'SUM', 'MAX', 'MIN', 'AVG', 'COUNT' );
 			if ( ! in_array( $function, $allowed_functions, true ) ) {
-				throw new \Exception( 'Invalid function.' );
+				throw new Exception( 'Invalid function.' );
 			}
 
 			// Construct the SQL query
@@ -483,7 +485,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				$results = $wpdb->get_results( $query, OBJECT );
 
 				if ( $wpdb->last_error ) {
-					throw new \Exception( 'Database query error: ' . $wpdb->last_error );
+					throw new Exception( 'Database query error: ' . $wpdb->last_error );
 				}
 
 				// Check if there are results
@@ -509,7 +511,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 				$result = $wpdb->get_var( $query );
 
 				if ( $wpdb->last_error ) {
-					throw new \Exception( 'Database query error: ' . $wpdb->last_error );
+					throw new Exception( 'Database query error: ' . $wpdb->last_error );
 				}
 
 				// Check if there is a result
@@ -563,7 +565,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 					}
 
 					if ( ! $this->validate_column( $column_name ) ) {
-						throw new \Exception( 'Invalid column name: ' . $column_name );
+						throw new Exception( 'Invalid column name: ' . $column_name );
 					}
 
 					if ( is_array( $value ) ) {
@@ -572,7 +574,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 						} elseif ( isset( $value['value'] ) && isset( $value['compare'] ) ) {
 							$this->generate_numeric_compare_condition( $column_name, $value['compare'], $value['value'], $placeholders, $where_conditions );
 						} else {
-							throw new \Exception( 'Invalid value provided for condition: ' . $value );
+							throw new Exception( 'Invalid value provided for condition: ' . $value );
 						}
 					} else {
 						$this->generate_basic_condition( $column_name, $value, $placeholders, $where_conditions );
@@ -666,7 +668,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 			$allowed_operators = array( '=', '>', '>=', '<', '<=', '!=' );
 
 			if ( ! in_array( $operator, $allowed_operators, true ) ) {
-				throw new \Exception( 'Invalid operator: ' . $operator );
+				throw new Exception( 'Invalid operator: ' . $operator );
 			}
 
 			$placeholder        = $this->get_placeholder_type( $value );
@@ -706,7 +708,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 		 * @type array   $placeholders Array of placeholders for prepared statements.
 		 *                             }
 		 *
-		 * @throws Exception|\Exception If an error occurs during the date conditions generation.
+		 * @throws Exception|Exception If an error occurs during the date conditions generation.
 		 */
 		protected function generate_date_conditions( string $date_column, string $date_start, string $date_end, array &$placeholders ): array {
 			$date_conditions = array(
@@ -719,7 +721,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 				if ( ! empty( $date_start ) ) {
 					if ( ! $this->is_valid_date_format( $date_start ) ) {
-						throw new \Exception( 'Invalid date format for date_start.' );
+						throw new Exception( 'Invalid date format for date_start.' );
 					}
 					$conditions[]                      = "$date_column >= %s";
 					$date_conditions['placeholders'][] = $date_start;
@@ -727,7 +729,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\Math_Query' ) ) :
 
 				if ( ! empty( $date_end ) ) {
 					if ( ! $this->is_valid_date_format( $date_end ) ) {
-						throw new \Exception( 'Invalid date format for date_end.' );
+						throw new Exception( 'Invalid date format for date_end.' );
 					}
 					$conditions[]                      = "$date_column <= %s";
 					$date_conditions['placeholders'][] = $date_end;
