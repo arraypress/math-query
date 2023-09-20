@@ -30,8 +30,6 @@ The `Math_Query` class allows you to perform mathematical queries on a WordPress
 ```php 
 // Include the Composer-generated autoload file.
 require_once dirname(__FILE__) . '/vendor/autoload.php';
-
-
 ```
 
 1. The `vendor/autoload.php` file is included to autoload classes from Composer.
